@@ -12,8 +12,8 @@ Unzip and read the data file:
 unzip("activity.zip")
 # filename = unzip(zipfile = "activity.zip", list=TRUE)$Name[1]
 data <- read.csv("activity.csv", sep = ",", header = TRUE, stringsAsFactors = FALSE)
+data$index <- as.numeric(row.names(data))
 # Change to NA for missing data -------------------------------------------
-data[data == 0] = NA
 # data = data[data$steps != 0,]
 ```
 
@@ -74,8 +74,10 @@ The 5-min interval with the on average largest number of steps is: `r Max_interv
 Replace missing values with the average for the 5-min period:
 
 ```{r}
-range_interval <- seq(0, 2355, by=5)
-range_df <- data.frame(range_interval)
-data2 <- merge(data, range_df)
+interval <- seq(0, 2355, by=5)
+range_df <- data.frame(interval)
+names(range_df)[1] <- "interval"
+data_corr <- merge(data, range_df, by = "interval")
+data_corr <- data_corr[order(data_corr$index),]
 ```
 
