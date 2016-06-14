@@ -23,7 +23,7 @@ Set the date format to posix:
 posixdate <- as.POSIXct(paste(data$date), format="%Y-%m-%d")
 data$date <- NULL
 data <- cbind(data, posixdate)
-names(data)[3] <- "Date"
+names(data)[4] <- "Date"
 ```
 
 ```{r, echo=TRUE}
