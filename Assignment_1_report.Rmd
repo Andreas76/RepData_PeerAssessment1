@@ -78,6 +78,34 @@ interval <- seq(0, 2355, by=5)
 range_df <- data.frame(interval)
 names(range_df)[1] <- "interval"
 data_corr <- merge(data, range_df, by = "interval")
+
+Mean_interval <- Interval_stats[,c(1,3)]
+names(Mean_interval)[2] <- "steps"
+data_corr <- merge(data_corr, Mean_interval, by = "interval")
 data_corr <- data_corr[order(data_corr$index),]
+data_corr$steps.x[is.na(data_corr$steps.x)] <- as.numeric(data_corr$steps.y[is.na(data_corr$steps.x)])
+data_corr <- data_corr[order(data_corr$index),]
+data_corr$steps.y <- NULL
+names(data_corr)[2] <- "steps"
 ```
 
+```{r, echo=TRUE}
+# Calculate stats for plotting --------------------------------------------
+Date_stats_corr <- ddply(data_corr, c("Date"), summarise,
+               Total    = sum(steps),
+               Mean = mean(steps))
+```
+
+Histogram of number of steps per day:
+
+```{r, echo=TRUE}
+hist(Date_stats_corr$Total, xlab = "Average number of daily steps", ylab="Number of days", main="")
+```
+
+Calculate the mean and median number of daily steps:
+
+```{r, echo=TRUE}
+Mean_steps_corr = round(mean(Date_stats_corr$Total))
+Median_steps_corr = median(Date_stats_corr$Total)
+```
+The mean: `r Mean_steps_corr` and median: `r Median_steps_corr` number of daily steps
