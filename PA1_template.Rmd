@@ -1,25 +1,153 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Reproducible data assignment 1"
+author: "Andreas Johansson"
+date: "6/20/2016"
+output: html_document
 ---
 
+Unzip and read the data file:
 
-## Loading and preprocessing the data
+```{r, echo=TRUE}
+unzip("activity.zip")
+data <- read.csv("activity.csv", sep = ",", header = TRUE, stringsAsFactors = FALSE)
+data$index <- as.numeric(row.names(data))
+```
 
+Set the date format to posix:
 
+```{r, echo=TRUE}
+posixdate <- as.POSIXct(paste(data$date), format="%Y-%m-%d")
+data$date <- NULL
+data <- cbind(data, posixdate)
+names(data)[4] <- "date"
+```
 
-## What is mean total number of steps taken per day?
+Calculate the daily stats:
 
+```{r, echo=TRUE}
+library(plyr)
 
+Date_stats <- ddply(data, c("date"), summarise,
+               Total    = sum(steps, na.rm = TRUE),
+               Mean = mean(steps, na.rm = TRUE))
+```
 
-## What is the average daily activity pattern?
+Histogram of number of steps per day:
 
+```{r, echo=TRUE}
+hist(Date_stats$Total, xlab = "Average number of daily steps", ylab="Number of days", main="")
+```
 
+Calculate the mean and median number of daily steps:
 
-## Imputing missing values
+```{r, echo=TRUE}
+Mean_steps = round(mean(Date_stats$Total, na.rm = TRUE))
+Median_steps = median(Date_stats$Total, na.rm = TRUE)
 
+```
 
+The mean: `r Mean_steps` and median: `r Median_steps` number of daily steps.
 
-## Are there differences in activity patterns between weekdays and weekends?
+Calculate the interval stats:
+
+```{r, echo=TRUE}
+Interval_stats <- ddply(data, c("interval"), summarise,
+               Total    = sum(steps, na.rm = TRUE),
+               Mean    = mean(steps, na.rm = TRUE))
+```
+
+Plot of the average number of steps per 5-min time interval:
+
+```{r, echo=TRUE}
+plot(Interval_stats$interval, Interval_stats$Mean,  type="l", ylab = "Average number of steps", xlab = "5-min time interval")
+```
+
+Find the 5-min time-interval with the largest number of steps on average:
+
+```{r, echo=TRUE}
+Max_steps <- max(Interval_stats$Mean, na.rm = FALSE)
+Max_interval <- which.max(Interval_stats$Mean)
+```
+
+The 5-min interval with the largest number of steps is: `r Interval_stats$interval[Max_interval]` with `r round(Max_steps)` on average. 
+
+Calculate the number of missing values:
+
+```{r, echo=TRUE}
+count_na <- count(is.na(data$steps))
+```
+
+Total number of rows with NA values: `r count_na$freq[2]`.
+
+Replace missing values with the average for the 5-min period:
+
+```{r, echo=TRUE}
+Mean_interval <- Interval_stats[,c(1,3)]
+names(Mean_interval)[2] <- "steps"
+data_corr <- merge(data, Mean_interval, by = "interval")
+data_corr$steps.x[is.na(data_corr$steps.x)] <- as.numeric(data_corr$steps.y[is.na(data_corr$steps.x)])
+data_corr$steps.y <- NULL
+names(data_corr)[2] <- "steps"
+```
+
+Re-calculate the daily stats after correcting for missing values:
+
+```{r, echo=TRUE}
+Date_stats_corr <- ddply(data_corr, c("date"), summarise,
+               Total    = sum(steps),
+               Mean = mean(steps))
+```
+
+Histogram of number of steps per day after correcting for missing values:
+
+```{r, echo=TRUE}
+hist(Date_stats_corr$Total, xlab = "Average number of daily steps", ylab="Number of days", main="")
+```
+
+Calculate the mean and median number of daily steps after correcting for missing values:
+
+```{r, echo=TRUE}
+Mean_steps_corr =round(mean(Date_stats_corr$Total))
+Median_steps_corr = round(median(Date_stats_corr$Total))
+```
+The mean: `r as.character(Mean_steps_corr)` and median: `r as.character(Median_steps_corr)` number of daily steps after correcting for missing values.
+
+Find the day of the week using the date:
+
+```{r, echo=TRUE}
+day <- data.frame(weekdays(data_corr$date))
+names(day)[1] <- "day"
+data_corr <- cbind(data_corr, day)
+```
+
+Create a new factor with two levels (weekend or weekday):
+
+```{r, echo=TRUE}
+weekend <- subset(data_corr, day == "Saturday" | day == "Sunday")
+weekend <- mutate(weekend, daytype = "weekend")
+weekday <- subset(data_corr, day != "Saturday" & day != "Sunday")
+weekday <- mutate(weekday, daytype = "weekday")
+data_corr <- rbind(weekday, weekend)
+data_corr$daytype <- as.factor(data_corr$daytype)
+```
+
+Calculate the interval stats on weekdays compared to weekends using the corrected data:
+
+```{r, echo=TRUE}
+Interval_stats_corr <- ddply(data_corr, c("interval", "daytype"), summarise,
+               Total    = sum(steps, na.rm = TRUE),
+               Mean    = mean(steps, na.rm = TRUE))
+```
+
+Panel plot of the average number of steps per 5-min time interval on weekdays compared to weekends:
+
+```{r, echo=TRUE}
+library(ggplot2)
+
+ggplot(data=Interval_stats_corr, aes(interval, Mean)) +
+    geom_line() + 
+    facet_wrap(~daytype, nrow=2) +
+    xlab("5-min interval\n") +
+    ylab("\nAverage number of steps")
+
+```
